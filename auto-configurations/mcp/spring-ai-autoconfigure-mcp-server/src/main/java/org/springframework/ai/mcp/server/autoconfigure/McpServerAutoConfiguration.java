@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+import io.modelcontextprotocol.spec.ToolFilter;
+import org.springframework.ai.mcp.AutoToolFilter;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -29,6 +31,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.core.log.LogAccessor;
@@ -128,6 +131,12 @@ public class McpServerAutoConfiguration {
 	}
 
 	@Bean
+	@ConditionalOnMissingBean
+	public ToolFilter toolFilter(ApplicationContext applicationContext) {
+		return new AutoToolFilter(applicationContext);
+	}
+
+	@Bean
 	@ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "type", havingValue = "SYNC",
 			matchIfMissing = true)
 	public McpSyncServer mcpSyncServer(McpServerTransportProvider transportProvider,
@@ -137,7 +146,7 @@ public class McpServerAutoConfiguration {
 			ObjectProvider<List<SyncPromptSpecification>> prompts,
 			ObjectProvider<List<SyncCompletionSpecification>> completions,
 			ObjectProvider<BiConsumer<McpSyncServerExchange, List<McpSchema.Root>>> rootsChangeConsumers,
-			Environment environment) {
+			Environment environment, ToolFilter toolFilter) {
 
 		McpSchema.Implementation serverInfo = new Implementation(serverProperties.getName(),
 				serverProperties.getVersion());
@@ -214,7 +223,7 @@ public class McpServerAutoConfiguration {
 			serverBuilder.immediateExecution(true);
 		}
 
-		return serverBuilder.build();
+		return serverBuilder.build(toolFilter);
 	}
 
 	@Bean
@@ -225,7 +234,8 @@ public class McpServerAutoConfiguration {
 			ObjectProvider<List<AsyncResourceSpecification>> resources,
 			ObjectProvider<List<AsyncPromptSpecification>> prompts,
 			ObjectProvider<List<AsyncCompletionSpecification>> completions,
-			ObjectProvider<BiConsumer<McpAsyncServerExchange, List<McpSchema.Root>>> rootsChangeConsumer) {
+			ObjectProvider<BiConsumer<McpAsyncServerExchange, List<McpSchema.Root>>> rootsChangeConsumer,
+			ToolFilter toolFilter) {
 
 		McpSchema.Implementation serverInfo = new Implementation(serverProperties.getName(),
 				serverProperties.getVersion());
@@ -301,7 +311,7 @@ public class McpServerAutoConfiguration {
 
 		serverBuilder.requestTimeout(serverProperties.getRequestTimeout());
 
-		return serverBuilder.build();
+		return serverBuilder.build(toolFilter);
 	}
 
 }
